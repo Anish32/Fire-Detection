@@ -2,6 +2,7 @@ import streamlit as st
 from ultralytics import YOLO
 import cv2
 import time
+import pygame.mixer # Import pygame.mixer
 
 st.set_page_config(page_title="Fire Detection", layout="centered")
 
@@ -11,6 +12,17 @@ st.markdown("Using a YOLO model to detect fire through your webcam.")
 if 'model' not in st.session_state:
     st.session_state.model = YOLO('best.pt')
 
+# Initialize the mixer
+pygame.mixer.init()
+
+# Load the sound file
+try:
+    fire_alarm_sound = pygame.mixer.Sound(r"C:\Users\vishn\OneDrive\Desktop\anish new\fire-detection-main\fire-detection-main\fire-alarm-33770.mp3") # Replace with your actual sound file path
+except pygame.error as e:
+    st.error(f"Could not load sound file: {e}")
+    fire_alarm_sound = None # Set to None if loading fails
+
+
 start_button = st.button("Start Detection")
 
 if start_button:
@@ -19,7 +31,7 @@ if start_button:
 
     stop_button = st.button("Stop Detection", key="stop_button")  # Unique key for stop button
     fire_detected = False  # To track fire detection status
-    
+
     # Create a progress bar
     progress = st.progress(0)  # Initial progress bar value set to 0 (No fire)
 
@@ -45,9 +57,16 @@ if start_button:
         if fire_detected:
             progress.progress(100)  # Full progress bar indicates fire detected
             fire_message.write("🔥 Fire Detected!")
+            # Play the sound if fire is detected and the sound is loaded and not already playing
+            if fire_alarm_sound and not pygame.mixer.get_busy():
+                 fire_alarm_sound.play()
         else:
             progress.progress(0)  # No progress bar means no fire detected
             fire_message.write("No Fire Detected")
+            # Stop the sound if no fire is detected
+            if pygame.mixer.get_busy():
+                 pygame.mixer.stop()
+
 
         # Display the annotated frame with detection
         stframe.image(annotated_frame, channels="BGR")
@@ -55,7 +74,10 @@ if start_button:
         # Check if the stop button is pressed and break the loop
         if stop_button:
             cap.release()
+            # Stop any playing sound when the stop button is pressed
+            if pygame.mixer.get_busy():
+                 pygame.mixer.stop()
             st.success("Detection stopped.")
             break
 
-        time.sleep(0.03)  # Add a small delay to manage resource usage
+        time.sleep(0.03)# Add a small delay to manage resource usage
